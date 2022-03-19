@@ -2,7 +2,7 @@ pydot==1.4.1
 keras==2.2.4
 
 grpcio==1.11.0
-tensorflow==1.14.0
+tensorflow==2.5.3
 tensorflow-gpu==1.14.0
 
 pyaudio==0.2.11

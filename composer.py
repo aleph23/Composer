@@ -447,12 +447,12 @@ def play():
     else:
         model_path = dir_name + 'model.pth'
 
-    model = torch.load(model_path)
+    model = AutoencoderModel()
+    model.load_state_dict(torch.load(model_path))
     model.eval()
-    model.eval()
-    # Using PyTorch model directly for both encoding and decoding
     encoder = model.encoder
-    decoder = model.decoder
+    decoder = K.function([model.get_layer('decoder').input,K.learning_phase()],
+                         [model.layers[-1].output])
 
     print("Loading gaussian/pca statistics...")
     latent_means = np.load(dir_name + sub_dir_name + '/latent_means.npy')
@@ -794,9 +794,9 @@ def play():
             else:
                 latent_x = latent_means + latent_stds * current_params
             latent_x = np.expand_dims(latent_x,axis=0)
-            latent_x_tensor = torch.tensor(latent_x, dtype=torch.float)
+            latent_x_tensor = torch.tensor(latent_x, dtype=torch.float).unsqueeze(0)
             with torch.no_grad():
-                y = decoder(latent_x_tensor).detach().cpu().numpy()
+                y = model.decoder(latent_x_tensor).squeeze(0).numpy()
             current_notes = (y * (255)).astype(np.uint8)
             needs_update = False
 

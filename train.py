@@ -47,7 +47,7 @@ MAX_WINDOWS = 16  # the maximal number of measures a song can have
 LATENT_SPACE_SIZE = params.num_params
 NUM_OFFSETS = 16 if USE_EMBEDDING else 1
 
-# PyTorch uses 'channels_first' by default for convolutional operations, so this line is not needed.
+K.set_image_data_format('channels_first')
 
 # Fix the random seed so that training comparisons are easier to make
 np.random.seed(42)
@@ -264,13 +264,13 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
                                                 embedding_input_shape=x_shape[1:],
                                                 embedding_shape=x_train.shape[0])
 
-        # Define the optimizer and loss function for PyTorch
         if USE_VAE:
-            optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-            loss_function = vae_loss
+            model.compile(optimizer=Adam(lr=learning_rate), loss=vae_loss)
+        #elif params.encode_volume:
+            #model.compile(optimizer=RMSprop(lr=learning_rate), loss='mean_squared_logarithmic_error')
         else:
-            optimizer = optim.RMSprop(model.parameters(), lr=learning_rate)
-            loss_function = nn.BCELoss()
+            model.compile(optimizer=RMSprop(lr=learning_rate), loss='binary_crossentropy')
+            #model.compile(optimizer=RMSprop(lr=learning_rate), loss='mean_squared_error')
 
         # plot model with graphvis if installed
         #try:
@@ -287,9 +287,7 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
         generate_normalized_random_songs(x_orig, y_orig, encoder, decoder, random_vectors, 'results/')
         for save_epoch in range(20):
             x_test_song = x_train[save_epoch:save_epoch + 1]
-            model.eval()
-            with torch.no_grad():
-                y_song = model(x_test_song).cpu().numpy()[0]
+            y_song = model.predict(x_test_song, batch_size=BATCH_SIZE)[0]
             midi_utils.samples_to_midi(y_song, f'results/gt{str(save_epoch)}.mid')
         exit(0)
 
@@ -301,14 +299,7 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
     for epoch in range(epochs_qty):
         print("Training epoch: ", epoch, "of", epochs_qty)
         if USE_EMBEDDING:
-            # Manual training loop in PyTorch
-            model.train()
-            for batch_idx, (data, target) in enumerate(train_loader):
-                optimizer.zero_grad()
-                output = model(data)
-                loss = loss_function(output, target)
-                loss.backward()
-                optimizer.step()
+            history = model.fit(x_train, y_train, batch_size=BATCH_SIZE, epochs=1)
         else:
             # produce songs from its samples with a different starting point of the song each time
             song_start_ix = 0
@@ -323,14 +314,7 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
             assert (song_end_ix == samples_qty)
             offset += 1
 
-            # Manual training loop in PyTorch for reconstruction loss
-            model.train()
-            for batch_idx, (data, target) in enumerate(train_loader):
-                optimizer.zero_grad()
-                output = model(data)
-                loss = loss_function(output, target)
-                loss.backward()
-                optimizer.step()
+            history = model.fit(y_train, y_train, batch_size=BATCH_SIZE, epochs=1)  # train model on reconstruction loss
 
         # store last loss
         loss = history.history["loss"][-1]
@@ -359,13 +343,9 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
             print("...Saved.")
 
             if USE_EMBEDDING:
-                model.eval()
-                with torch.no_grad():
-                    y_song = model(x_test_song).cpu().numpy()[0]
+                y_song = model.predict(x_test_song, batch_size=BATCH_SIZE)[0]
             else:
-                model.eval()
-                with torch.no_grad():
-                    y_song = model(y_test_song).cpu().numpy()[0]
+                y_song = model.predict(y_test_song, batch_size=BATCH_SIZE)[0]
 
             plot_utils.plot_samples(f'{write_dir}test', y_song)
             midi_utils.samples_to_midi(y_song, f'{write_dir}test.mid')

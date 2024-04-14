@@ -8,19 +8,17 @@ The models used for music generation.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import randn
+
 import params
 
 
 def vae_sampling(args):
     z_mean, z_log_sigma_sq, vae_b1 = args
-    epsilon = randn(z_mean.size(), dtype=z_mean.dtype, device=z_mean.device) * vae_b1
-    return z_mean + torch.exp(z_log_sigma_sq * 0.5) * epsilon
+    epsilon = K.random_normal(shape=K.shape(z_mean), mean=0.0, stddev=vae_b1)
+    return z_mean + K.exp(z_log_sigma_sq * 0.5) * epsilon
 
 
-class AutoencoderModel(nn.Module):
-    def __init__(self, input_shape, latent_space_size, dropout_rate, max_windows, batchnorm_momentum, use_vae=False, vae_b1=0.02, use_embedding=False, embedding_input_shape=None, embedding_shape=None):
-        super(AutoencoderModel, self).__init__()
+def create_autoencoder_model(input_shape, latent_space_size, dropout_rate, max_windows, batchnorm_momentum, use_vae=False, vae_b1=0.02, use_embedding=False, embedding_input_shape=None, embedding_shape=None):
     """
     Create larger autoencoder with the options of making it variational and embedding.
     :param input_shape:

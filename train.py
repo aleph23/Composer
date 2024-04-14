@@ -29,10 +29,18 @@ from keras import backend as K
 from keras.losses import binary_crossentropy
 from keras.optimizers import Adam, RMSprop
 
-EPOCHS_QTY = 200
-EPOCHS_TO_SAVE = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 350, 400, 450]
-LEARNING_RATE = 0.001 / 5  # learning rate
-CONTINUE_TRAIN = True
+# import tensorflow as tf
+# from tensorflow.python.client import device_lib
+# print(device_lib.list_local_devices())
+
+# config = tf.ConfigProto( device_count = {'GPU': 1 , 'CPU': 56} ) 
+# sess = tf.Session(config=config) 
+# K.set_session(sess)
+
+EPOCHS_QTY = 3000
+EPOCHS_TO_SAVE = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 350, 400, 450, 800, 1000, 1500, 2000, 2500, 3000]
+LEARNING_RATE = 0.001  # learning rate
+CONTINUE_TRAIN = False
 GENERATE_ONLY = False
 
 WRITE_HISTORY = True

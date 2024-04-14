@@ -4,17 +4,18 @@ Generate tunable music using neural networks.
 Repository to ["Generating Songs With Neural Networks (Neural Composer)"](https://youtu.be/UWxfnNXlVy8).
 
 ## How to install
-
+* Requires Python 3.5.6
+* CUDA 10.0 AND CUDNN 7.6.5 https://developer.nvidia.com/rdp/cudnn-archive
 * Install dependencies in python3 by running `pip install -r requirements.txt`.
 
 ## How to run
 
-* Find some dataset to train on. More info on where to find datasets can be found in data/raw/README.md. A default bach dataset is included in the repository.
-* Run preprocess_songs.py. This will load all midi files from your midi files folder data/raw/ into data/interim/samples.npy & lengths.npy.
-  You can point the script to a location using the --data_folder flag one or multiple times to make it include more paths to  index midi files.
-* Run train.py. This will train your network and store the progress from time to time (EPOCHS_TO_SAVE to change storing frequency).
-  Only stops if you interrupt it or after 2000 epochs.
-* Run composer.py --model_path "e300" where "e300" indicates the folder the stored model is in. Look into the results/history folder to find your trained model folders.
+* Find some dataset to train on. More info on where to find datasets can be found in `data/raw/README.md`. A default bach dataset is included in the repository.
+* Run `preprocess_songs.py`. This will load all midi files from your midi files folder `data/raw/` into `data/interim/samples.npy` & `lengths.npy`.
+  You can point the script to a location using the `--data_folder` flag one or multiple times to make it include more paths to index midi files.
+* Run `train.py`. This will train your network and store the progress from time to time (EPOCHS_TO_SAVE to change storing frequency).
+  Only stops if you interrupt it or after 2000 epochs. You need to change "CONTINUE_TRAIN" to False to start training from scratch.
+* Run `composer.py --model_path "e300"` where `"e300"` indicates the folder the stored model is in. Look into the `results/history` folder to find your trained model folders.
 
 ## Composer
 

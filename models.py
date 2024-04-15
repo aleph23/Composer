@@ -5,11 +5,11 @@
 The models used for music generation.
 """
 
-from keras import backend as K
-from keras.layers import Input, Dense, Activation, Dropout, Flatten, Reshape, TimeDistributed, Lambda
-from keras.layers.embeddings import Embedding
-from keras.layers.normalization import BatchNormalization
-from keras.models import Model
+import torch
+import torch.nn as nn
+
+
+
 import params
 
 def vae_sampling(args):
@@ -18,7 +18,9 @@ def vae_sampling(args):
     return z_mean + K.exp(z_log_sigma_sq * 0.5) * epsilon
 
 
-def create_autoencoder_model(input_shape, latent_space_size, dropout_rate, max_windows, batchnorm_momentum, use_vae=False, vae_b1=0.02, use_embedding=False, embedding_input_shape=None, embedding_shape=None):
+class AutoencoderModel(nn.Module):
+    def __init__(self, input_shape, latent_space_size, dropout_rate, max_windows, batchnorm_momentum, use_vae=False, vae_b1=0.02, use_embedding=False, embedding_input_shape=None, embedding_shape=None):
+        super(AutoencoderModel, self).__init__()
     """
     Create larger autoencoder with the options of making it variational and embedding.
     :param input_shape:

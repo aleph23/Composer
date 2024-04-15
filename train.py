@@ -17,17 +17,14 @@ import models
 import params
 import plot_utils
 
-#  Load Keras
-print("Loading keras...")
 import os
-import keras
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.utils.data
 
-print(f"Keras version: {keras.__version__}")
-
-from keras.models import Model, load_model
-from keras import backend as K
-from keras.losses import binary_crossentropy
-from keras.optimizers import Adam, RMSprop
+# Removed Keras version print as it's no longer relevant
+# Removed Keras specific imports
 
 # import tensorflow as tf
 # from tensorflow.python.client import device_lib
@@ -221,8 +218,22 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
         print('No input data found, run preprocess_songs.py first.')
         exit(1)
 
-    y_samples = np.load(samples_path)
-    y_lengths = np.load(lengths_path)
+    # Replaced numpy loading with PyTorch DataLoader
+    # Define custom Dataset class
+    class MidiDataset(torch.utils.data.Dataset):
+        def __init__(self, samples_path, lengths_path):
+            self.y_samples = torch.from_numpy(np.load(samples_path)).float()
+            self.y_lengths = torch.from_numpy(np.load(lengths_path)).long()
+
+        def __len__(self):
+            return len(self.y_lengths)
+
+        def __getitem__(self, idx):
+            return self.y_samples[idx], self.y_lengths[idx]
+
+    # Instantiate the dataset and DataLoader
+    dataset = MidiDataset(samples_path, lengths_path)
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     samples_qty = y_samples.shape[0]
     songs_qty = y_lengths.shape[0]

@@ -15,7 +15,7 @@ pygame.font.init()
 class TextInput:
     """
     This class lets the user input a piece of text, e.g. a name or a message.
-    This class let's the user input a short, one-lines piece of text at a blinking cursor
+    This class lets the user input a short, one-lines piece of text at a blinking cursor
     that can be moved using the arrow-keys. Delete, home and end work as well.
     """
     def __init__(

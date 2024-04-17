@@ -2,7 +2,7 @@
 
 This small module can be used to write text in pygame. It includes a blinking cursor that can be moved using the left and right as well as the home and the end button. Any key can be pressed for an extended period of time to make that key re-enter itself many times a second.
 
-Here's an example of the module in use using the [Ubuntu font](http://font.ubuntu.com/):
+Here's an example of the module using the [Ubuntu font](http://font.ubuntu.com/):
 ![Example of module in use](http://i.imgur.com/enuCPEY.gif)
 
 # Usage
@@ -47,15 +47,15 @@ if textinput.update(events):
 ```
 
 ## Arguments:
-Arguments for the initalisation of the `TextInput`-object (all of them are optional)
+Arguments for the initialisation of the `TextInput`-object (all of them are optional)
 
-argument | description
----|---
-initial_string | Initial text to be displayed
-font_family | Name or path of the font that should be used. If none or one that doesn't exist is specified, the pygame default font is used.
-font_size | Size of the font in pixels. Default is 35.
-antialias | (bool) Declare if antialias should be used on text or not. True uses more CPU cycles.
-text_color | The color of the text.
-cursor_color | The color of the cursor.
-repeat_keys_initial_ms | Time in ms until the key presses get repeated when a key is not released
-repeat_keys_interval_ms | Time in ms between key presses if key is not released
+| argument                | description                                                                                                                    |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| initial_string          | Initial text to be displayed                                                                                                   |
+| font_family             | Name or path of the font that should be used. If none or one that doesn't exist is specified, the pygame default font is used. |
+| font_size               | Size of the font in pixels. Default is 35.                                                                                     |
+| antialias               | (bool) Declare if antialiasing should be used on text or not. True uses more CPU cycles.                                       |
+| text_color              | The color of the text.                                                                                                         |
+| cursor_color            | The color of the cursor.                                                                                                       |
+| repeat_keys_initial_ms  | Time in ms until the key presses get repeated when a key is not released                                                       |
+| repeat_keys_interval_ms | Time in ms between key presses if key is not released                                                                          |

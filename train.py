@@ -2,25 +2,22 @@
 # -*- coding: utf-8 -*-
 
 """
-Train an autoencoder model to learn to encode songs.
+Train an auto-encoder model to learn to encode songs.
 """
 
+
+import argparse
 import random
 
 import numpy as np
-#import matplotlib
-#import matplotlib.pyplot as plt
-#from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 
 import midi_utils
-import plot_utils
 import models
 import params
-
-import argparse
+import plot_utils
 
 #  Load Keras
-print("Loading keras...")
 import os
 import torch
 import torch.nn as nn
@@ -40,7 +37,6 @@ import torch.utils.data
 EPOCHS_QTY = 3000
 EPOCHS_TO_SAVE = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 350, 400, 450, 800, 1000, 1500, 2000, 2500, 3000]
 GENERATE_ONLY = False
-
 LEARNING_RATE = 0.001 / 5  # learning rate
 CONTINUE_TRAIN = True
 WRITE_HISTORY = True
@@ -48,7 +44,7 @@ NUM_RAND_SONGS = 10
 
 # network params
 DROPOUT_RATE = 0.1
-BATCHNORM_MOMENTUM = 0.9  # weighted normalization with the past
+BATCHNORM_MOMENTUM: float = 0.9  # weighted normalization with the past
 USE_EMBEDDING = False
 USE_VAE = False
 VAE_B1 = 0.02
@@ -88,20 +84,21 @@ def plot_losses(scores, f_name, on_top=True):
     :param on_top:
     :return:
     """
-    #plt.clf()
-    #ax = plt.gca()
-    #ax.yaxis.tick_right()
-    #ax.yaxis.set_ticks_position('both')
-    #ax.yaxis.grid(True)
-    #plt.plot(scores)
-    #plt.ylim([0.0, 0.009])
-    #plt.xlabel('Epoch')
-    #loc = ('upper right' if on_top else 'lower right')
-    #plt.draw()
-    #plt.savefig(f_name)
+    plt.clf()
+    ax = plt.gca()
+    ax.yaxis.tick_right()
+    ax.yaxis.set_ticks_position('both')
+    ax.yaxis.grid(True)
+    plt.plot(scores)
+    plt.ylim([0.0, 0.009])
+    plt.xlabel('Epoch')
+    loc = ('upper right' if on_top else 'lower right')
+    plt.draw()
+    plt.savefig(f_name)
 
 
 def save_training_config(num_songs, model, learning_rate):
+    # sourcery skip: use-fstring-for-concatenation
     """
     Save configuration of training.
     :param num_songs:
@@ -129,7 +126,9 @@ def generate_random_songs(decoder, write_dir, random_vectors):
     for i in range(random_vectors.shape[0]):
         random_latent_x = random_vectors[i:i + 1]
         y_song = decoder([random_latent_x, 0])[0]
-        midi_utils.samples_to_midi(y_song[0], write_dir + 'random_vectors' + str(i) + '.mid', 32)
+        midi_utils.samples_to_midi(
+            y_song[0], f'{write_dir}random_vectors{str(i)}.mid', 32
+        )
 
 
 def calculate_and_store_pca_statistics(encoder, x_orig, y_orig, write_dir):
@@ -156,10 +155,10 @@ def calculate_and_store_pca_statistics(encoder, x_orig, y_orig, write_dir):
     print("Latent Mean values: ", latent_mean[:6])
     print("Latent PCA values: ", latent_pca_values[:6])
 
-    np.save(write_dir + 'latent_means.npy', latent_mean)
-    np.save(write_dir + 'latent_stds.npy', latent_stds)
-    np.save(write_dir + 'latent_pca_values.npy', latent_pca_values)
-    np.save(write_dir + 'latent_pca_vectors.npy', latent_pca_vectors)
+    np.save(f'{write_dir}latent_means.npy', latent_mean)
+    np.save(f'{write_dir}latent_stds.npy', latent_stds)
+    np.save(f'{write_dir}latent_pca_values.npy', latent_pca_values)
+    np.save(f'{write_dir}latent_pca_vectors.npy', latent_pca_vectors)
     return latent_mean, latent_stds, latent_pca_values, latent_pca_vectors
 
 
@@ -179,28 +178,25 @@ def generate_normalized_random_songs(x_orig, y_orig, encoder, decoder, random_ve
     latent_vectors = latent_mean + np.dot(random_vectors * pca_values, pca_vectors)
     generate_random_songs(decoder, write_dir, latent_vectors)
 
-    title = ''
-    if '/' in write_dir:
-        title = 'Epoch: ' + write_dir.split('/')[-2][1:]
-
-    #plt.clf()
+    title = 'Epoch: ' + write_dir.split('/')[-2][1:] if '/' in write_dir else ''
+    plt.clf()
     pca_values[::-1].sort()
-    #plt.title(title)
-    #plt.bar(np.arange(pca_values.shape[0]), pca_values, align='center')
-    #plt.draw()
-    #plt.savefig(write_dir + 'latent_pca_values.png')
+    plt.title(title)
+    plt.bar(np.arange(pca_values.shape[0]), pca_values, align='center')
+    plt.draw()
+    plt.savefig(f'{write_dir}latent_pca_values.png')
 
-    #plt.clf()
-    #plt.title(title)
-    #plt.bar(np.arange(pca_values.shape[0]), latent_mean, align='center')
-    #plt.draw()
-    #plt.savefig(write_dir + 'latent_means.png')
+    plt.clf()
+    plt.title(title)
+    plt.bar(np.arange(pca_values.shape[0]), latent_mean, align='center')
+    plt.draw()
+    plt.savefig(f'{write_dir}latent_means.png')
 
-    #plt.clf()
-    #plt.title(title)
-    #plt.bar(np.arange(pca_values.shape[0]), latent_stds, align='center')
-    #plt.draw()
-    #plt.savefig(write_dir + 'latent_stds.png')
+    plt.clf()
+    plt.title(title)
+    plt.bar(np.arange(pca_values.shape[0]), latent_stds, align='center')
+    plt.draw()
+    plt.savefig(f'{write_dir}latent_stds.png')
 
 
 def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/lengths.npy', epochs_qty=EPOCHS_QTY, learning_rate=LEARNING_RATE):
@@ -240,7 +236,7 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
 
     samples_qty = y_samples.shape[0]
     songs_qty = y_lengths.shape[0]
-    print("Loaded " + str(samples_qty) + " samples from " + str(songs_qty) + " songs.")
+    print(f"Loaded {str(samples_qty)} samples from {str(songs_qty)} songs.")
     print(np.sum(y_lengths))
     assert (np.sum(y_lengths) == samples_qty)
 
@@ -300,10 +296,9 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
 
         # plot model with graphvis if installed
         #try:
-       #     plot_model(model, to_file='results/model.png', show_shapes=True)
+        #     plot_model(model, to_file='results/model.png', show_shapes=True)
         #except OSError as e:
         #    print(e)
-
     #  train
     print("Referencing sub-models...")
     decoder = K.function([model.get_layer('decoder').input, K.learning_phase()], [model.layers[-1].output])
@@ -318,7 +313,7 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
         for save_epoch in range(20):
             x_test_song = x_train[save_epoch:save_epoch + 1]
             y_song = model.predict(x_test_song, batch_size=BATCH_SIZE)[0]
-            midi_utils.samples_to_midi(y_song, 'results/gt' + str(save_epoch) + '.mid')
+            midi_utils.samples_to_midi(y_song, f'results/gt{str(save_epoch)}.mid')
         exit(0)
 
     save_training_config(songs_qty, model, learning_rate)
@@ -349,7 +344,7 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
         # store last loss
         loss = history.history["loss"][-1]
         train_loss.append(loss)
-        print("Train loss: " + str(train_loss[-1]))
+        print(f"Train loss: {str(train_loss[-1])}")
 
         if WRITE_HISTORY:
             plot_losses(train_loss, 'results/history/losses.png', True)
@@ -362,7 +357,7 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
             write_dir = ''
             if WRITE_HISTORY:
                 # Create folder to save models into
-                write_dir += 'results/history/e' + str(save_epoch)
+                write_dir += f'results/history/e{str(save_epoch)}'
                 if not os.path.exists(write_dir):
                     os.makedirs(write_dir)
                 write_dir += '/'
@@ -377,8 +372,8 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
             else:
                 y_song = model.predict(y_test_song, batch_size=BATCH_SIZE)[0]
 
-            plot_utils.plot_samples(write_dir + 'test', y_song)
-            midi_utils.samples_to_midi(y_song, write_dir + 'test.mid')
+            plot_utils.plot_samples(f'{write_dir}test', y_song)
+            midi_utils.samples_to_midi(y_song, f'{write_dir}test.mid')
 
             generate_normalized_random_songs(x_orig, y_orig, encoder, decoder, random_vectors, write_dir)
 

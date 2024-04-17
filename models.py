@@ -99,6 +99,7 @@ class AutoencoderModel(nn.Module):
         x = Dropout(dropout_rate)(x)
     print(K.int_shape(x))
 
+    
     #if params.encode_volume:
         #x = TimeDistributed(Dense(input_shape[1] * input_shape[2]))(x)
     #else:
@@ -108,6 +109,4 @@ class AutoencoderModel(nn.Module):
     x = Reshape((input_shape[0], input_shape[1], input_shape[2]))(x)
     print(K.int_shape(x))
 
-    model = Model(x_in, x)
-
-    return model
+    return Model(x_in, x)

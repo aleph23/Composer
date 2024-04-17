@@ -5,7 +5,14 @@ results/*
 run.bat
 *.mid
 __pycache__/*
+/.vs/Composer/FileContentIndex/5bcaee41-053c-41c7-b31d-0a445c89d351.vsidx
+/.vs/Composer/FileContentIndex/read.lock
+/.vs/Composer/v17/.wsuo
+/.vs/slnx.sqlite
+.vs/Composer/FileContentIndex/17b639d7-f02e-47fd-a903-7ef32f5632b2.vsidx
+.vs/VSWorkspaceState.json
+/.vscode/settings.json
+slnx.sqlite
 cuda10.dockerfile
 docker-compose.yml
 Dockerfile
-

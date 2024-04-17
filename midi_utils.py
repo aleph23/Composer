@@ -4,6 +4,7 @@
 """
 Utils to read and write midi.
 """
+from typing import Dict,Union,Any,List
 
 from mido import MidiFile, MidiTrack, Message
 import numpy as np
@@ -18,6 +19,7 @@ def midi_to_samples(file_name, num_notes=96, samples_per_measure=96):
     :param samples_per_measure:
     :return:
     """
+    global note
     has_time_sig = False
     mid = MidiFile(file_name)
 
@@ -41,7 +43,7 @@ def midi_to_samples(file_name, num_notes=96, samples_per_measure=96):
 
     # turn tracks into pianoroll representation
     maxVol = 1
-    all_notes = {}
+    all_notes: Dict[Union[float, Any], List[Any]] = {}
     for track in mid.tracks:
 
         abs_time = 0
@@ -58,12 +60,12 @@ def midi_to_samples(file_name, num_notes=96, samples_per_measure=96):
                 # we skip notes without a velocity (basically how strong a note is played to make it sound human)
                 if msg.velocity == 0:
                     continue
-                
+
                 if msg.velocity > maxVol:
                     maxVol = msg.velocity
 
                 # transform the notes into the 96 heights
-                note = msg.note - (128 - num_notes) / 2
+                note: Union[float, Any] = msg.note - (128 - num_notes) / 2
                 if note < 0 or note >= num_notes:  # ignore a note that is outside of that range
                     print('Ignoring', file_name, 'note is outside 0-%d range' % (num_notes - 1))
                     return []
@@ -121,8 +123,8 @@ def midi_to_samples(file_name, num_notes=96, samples_per_measure=96):
                 while start_ix < end_ix:
                     sample[start_ix, int(note)] = vel if params.encode_volume else 1
                     start_ix += 1
-            
-                
+
+
 
     return samples
 
@@ -136,6 +138,7 @@ def samples_to_midi(samples, file_name, threshold=0.5, num_notes=96, samples_per
     :param num_notes:
     :param samples_per_measure:
     :return:
+    @rtype: object
     """
     # TODO: Encode the certainties of the notes into the volume of the midi for the notes that are above threshold
 

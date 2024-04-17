@@ -23,4 +23,4 @@ def plot_samples(folder, samples, threshold=None):
         os.makedirs(folder)
 
     for i in range(samples.shape[0]):
-        plot_sample(folder + '/s' + str(i) + '.png', samples[i], threshold)
+        plot_sample(f'{folder}/s{str(i)}.png', samples[i], threshold)

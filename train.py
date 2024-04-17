@@ -20,18 +20,24 @@ import argparse
 #  Load Keras
 print("Loading keras...")
 import os
-import keras
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.utils.data
 
-print("Keras version: " + keras.__version__)
+# Removed Keras version print as it's no longer relevant
+# Removed Keras specific imports
 
-from keras.models import Model, load_model
-#from keras.utils import plot_model
-from keras import backend as K
-from keras.losses import binary_crossentropy
-from keras.optimizers import Adam, RMSprop
+# import tensorflow as tf
+# from tensorflow.python.client import device_lib
+# print(device_lib.list_local_devices())
+
+# config = tf.ConfigProto( device_count = {'GPU': 1 , 'CPU': 56} ) 
+# sess = tf.Session(config=config) 
+# K.set_session(sess)
 
 EPOCHS_QTY = 3000
-EPOCHS_TO_SAVE = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 350, 400, 450]
+EPOCHS_TO_SAVE = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 350, 400, 450, 800, 1000, 1500, 2000, 2500, 3000]
 LEARNING_RATE = 0.001  # learning rate
 CONTINUE_TRAIN = False
 GENERATE_ONLY = False
@@ -214,8 +220,22 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
         print('No input data found, run preprocess_songs.py first.')
         exit(1)
 
-    y_samples = np.load(samples_path)
-    y_lengths = np.load(lengths_path)
+    # Replaced numpy loading with PyTorch DataLoader
+    # Define custom Dataset class
+    class MidiDataset(torch.utils.data.Dataset):
+        def __init__(self, samples_path, lengths_path):
+            self.y_samples = torch.from_numpy(np.load(samples_path)).float()
+            self.y_lengths = torch.from_numpy(np.load(lengths_path)).long()
+
+        def __len__(self):
+            return len(self.y_lengths)
+
+        def __getitem__(self, idx):
+            return self.y_samples[idx], self.y_lengths[idx]
+
+    # Instantiate the dataset and DataLoader
+    dataset = MidiDataset(samples_path, lengths_path)
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     samples_qty = y_samples.shape[0]
     songs_qty = y_lengths.shape[0]

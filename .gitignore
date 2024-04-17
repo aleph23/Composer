@@ -2,3 +2,6 @@ data/*
 config.txt
 history
 results/*
+cuda10.dockerfile
+docker-compose.yml
+Dockerfile

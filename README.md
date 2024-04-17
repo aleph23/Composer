@@ -3,6 +3,9 @@ Generate tunable music using neural networks.
 
 Repository to ["Generating Songs With Neural Networks (Neural Composer)"](https://youtu.be/UWxfnNXlVy8).
 
+## What is this fork
+* I'd like to mess around with the models and create an accompanying web app so that people can play with this online.
+
 ## How to install
 * Requires Python 3.5.6
 * CUDA 10.0 AND CUDNN 7.6.5 https://developer.nvidia.com/rdp/cudnn-archive

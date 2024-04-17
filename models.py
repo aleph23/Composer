@@ -7,13 +7,15 @@ The models used for music generation.
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from torch import randn
 import params
 
 
 def vae_sampling(args):
     z_mean, z_log_sigma_sq, vae_b1 = args
-    epsilon = K.random_normal(shape=K.shape(z_mean), mean=0.0, stddev=vae_b1)
-    return z_mean + K.exp(z_log_sigma_sq * 0.5) * epsilon
+    epsilon = randn(z_mean.size(), dtype=z_mean.dtype, device=z_mean.device) * vae_b1
+    return z_mean + torch.exp(z_log_sigma_sq * 0.5) * epsilon
 
 
 class AutoencoderModel(nn.Module):

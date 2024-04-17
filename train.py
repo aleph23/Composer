@@ -21,6 +21,7 @@ import plot_utils
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
 
@@ -55,7 +56,7 @@ MAX_WINDOWS = 16  # the maximal number of measures a song can have
 LATENT_SPACE_SIZE = params.num_params
 NUM_OFFSETS = 16 if USE_EMBEDDING else 1
 
-K.set_image_data_format('channels_first')
+# PyTorch uses 'channels_first' by default for convolutional operations, so this line is not needed.
 
 # Fix the random seed so that training comparisons are easier to make
 np.random.seed(42)
@@ -271,7 +272,7 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
     #  create model
     if CONTINUE_TRAIN or GENERATE_ONLY:
         print("Loading model...")
-        model = load_model('results/history/model.h5')
+        model = torch.load('results/history/model.pth')
     else:
         print("Building model...")
 
@@ -286,13 +287,13 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
                                                 embedding_input_shape=x_shape[1:],
                                                 embedding_shape=x_train.shape[0])
 
+        # Define the optimizer and loss function for PyTorch
         if USE_VAE:
-            model.compile(optimizer=Adam(lr=learning_rate), loss=vae_loss)
-        #elif params.encode_volume:
-            #model.compile(optimizer=RMSprop(lr=learning_rate), loss='mean_squared_logarithmic_error')
+            optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+            loss_function = vae_loss
         else:
-            model.compile(optimizer=RMSprop(lr=learning_rate), loss='binary_crossentropy')
-            #model.compile(optimizer=RMSprop(lr=learning_rate), loss='mean_squared_error')
+            optimizer = optim.RMSprop(model.parameters(), lr=learning_rate)
+            loss_function = nn.BCELoss()
 
         # plot model with graphvis if installed
         #try:
@@ -312,7 +313,9 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
         generate_normalized_random_songs(x_orig, y_orig, encoder, decoder, random_vectors, 'results/')
         for save_epoch in range(20):
             x_test_song = x_train[save_epoch:save_epoch + 1]
-            y_song = model.predict(x_test_song, batch_size=BATCH_SIZE)[0]
+            model.eval()
+            with torch.no_grad():
+                y_song = model(x_test_song).cpu().numpy()[0]
             midi_utils.samples_to_midi(y_song, f'results/gt{str(save_epoch)}.mid')
         exit(0)
 
@@ -324,7 +327,14 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
     for epoch in range(epochs_qty):
         print("Training epoch: ", epoch, "of", epochs_qty)
         if USE_EMBEDDING:
-            history = model.fit(x_train, y_train, batch_size=BATCH_SIZE, epochs=1)
+            # Manual training loop in PyTorch
+            model.train()
+            for batch_idx, (data, target) in enumerate(train_loader):
+                optimizer.zero_grad()
+                output = model(data)
+                loss = loss_function(output, target)
+                loss.backward()
+                optimizer.step()
         else:
             # produce songs from its samples with a different starting point of the song each time
             song_start_ix = 0
@@ -339,7 +349,14 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
             assert (song_end_ix == samples_qty)
             offset += 1
 
-            history = model.fit(y_train, y_train, batch_size=BATCH_SIZE, epochs=1)  # train model on reconstruction loss
+            # Manual training loop in PyTorch for reconstruction loss
+            model.train()
+            for batch_idx, (data, target) in enumerate(train_loader):
+                optimizer.zero_grad()
+                output = model(data)
+                loss = loss_function(output, target)
+                loss.backward()
+                optimizer.step()
 
         # store last loss
         loss = history.history["loss"][-1]
@@ -361,16 +378,20 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
                 if not os.path.exists(write_dir):
                     os.makedirs(write_dir)
                 write_dir += '/'
-                model.save('results/history/model.h5')
+                torch.save(model.state_dict(), 'results/history/model.pth')
             else:
                 model.save('results/model.h5')
 
             print("...Saved.")
 
             if USE_EMBEDDING:
-                y_song = model.predict(x_test_song, batch_size=BATCH_SIZE)[0]
+                model.eval()
+                with torch.no_grad():
+                    y_song = model(x_test_song).cpu().numpy()[0]
             else:
-                y_song = model.predict(y_test_song, batch_size=BATCH_SIZE)[0]
+                model.eval()
+                with torch.no_grad():
+                    y_song = model(y_test_song).cpu().numpy()[0]
 
             plot_utils.plot_samples(f'{write_dir}test', y_song)
             midi_utils.samples_to_midi(y_song, f'{write_dir}test.mid')

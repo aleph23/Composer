@@ -435,22 +435,24 @@ def play():
 
     print("Loading encoder...")
     # priority name.h5 in sub, model.h5 in sub, name.h5 in dir, model.h5 in dir
-    if os.path.isfile(dir_name + sub_dir_name + '/' + sub_dir_name + '.h5'):
-        model = load_model(dir_name + sub_dir_name + '/' + sub_dir_name + '.h5')
+    import torch
+    from models import AutoencoderModel
 
-    elif os.path.isfile(dir_name + sub_dir_name + '/' + 'model.h5'):
-        model = load_model(dir_name + sub_dir_name + '/' + 'model.h5')
-
-    elif os.path.isfile(dir_name + sub_dir_name + '.h5'):
-        model = load_model(dir_name + sub_dir_name + '.h5')
-
+    model_path = ''
+    if os.path.isfile(dir_name + sub_dir_name + '/' + sub_dir_name + '.pth'):
+        model_path = dir_name + sub_dir_name + '/' + sub_dir_name + '.pth'
+    elif os.path.isfile(dir_name + sub_dir_name + '/' + 'model.pth'):
+        model_path = dir_name + sub_dir_name + '/' + 'model.pth'
+    elif os.path.isfile(dir_name + sub_dir_name + '.pth'):
+        model_path = dir_name + sub_dir_name + '.pth'
     else:
-        model = load_model(dir_name + 'model.h5')
+        model_path = dir_name + 'model.pth'
 
-    encoder = Model(inputs=model.input,
-                    outputs=model.get_layer('encoder').output)
-    decoder = K.function([model.get_layer('decoder').input,K.learning_phase()],
-                         [model.layers[-1].output])
+    model = torch.load(model_path)
+    model.eval()
+    # Using PyTorch model directly for both encoding and decoding
+    encoder = model.encoder
+    decoder = model.decoder
 
     print("Loading gaussian/pca statistics...")
     latent_means = np.load(dir_name + sub_dir_name + '/latent_means.npy')
@@ -716,15 +718,17 @@ def play():
                         if is_ae:
                             example_song = y_samples[cur_len:cur_len + num_measures]
                             current_notes = example_song * 255
-                            latent_x = encoder.predict(np.expand_dims(
-                                example_song,0),batch_size=1)[0]
+                            example_song_tensor = torch.tensor(example_song, dtype=torch.float).unsqueeze(0)
+                            with torch.no_grad():
+                                latent_x = encoder(example_song_tensor).numpy()
                             cur_len += y_lengths[random_song_ix]
                             random_song_ix += 1
                         else:
                             random_song_ix: ndarray = np.array(
                                 [random_song_ix],dtype=np.int64)
-                            latent_x = encoder.predict(
-                                random_song_ix,batch_size=1)[0]
+                            random_song_ix_tensor = torch.tensor([random_song_ix], dtype=torch.int64)
+                            with torch.no_grad():
+                                latent_x = encoder(random_song_ix_tensor).numpy()
                             random_song_ix = (
                                 random_song_ix + 1) % model.layers[0].input_dim
 
@@ -807,7 +811,9 @@ def play():
                     #
                     y = np.expand_dims(
                         np.where(current_notes > note_threshold,1,0),0)
-                    latent_x = encoder.predict(y)[0]
+                    y_tensor = torch.tensor(y, dtype=torch.float)
+                    with torch.no_grad():
+                        latent_x = encoder(y_tensor).numpy()
                     if use_pca:
                         current_params = np.dot(
                             latent_x - latent_means,latent_pca_vectors.T) / latent_pca_values
@@ -825,7 +831,9 @@ def play():
             else:
                 latent_x = latent_means + latent_stds * current_params
             latent_x = np.expand_dims(latent_x,axis=0)
-            y = decoder([latent_x,0])[0][0]
+            latent_x_tensor = torch.tensor(latent_x, dtype=torch.float)
+            with torch.no_grad():
+                y = decoder(latent_x_tensor).detach().cpu().numpy()
             current_notes = (y * (255)).astype(np.uint8)
             needs_update = False
 

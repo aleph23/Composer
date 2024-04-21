@@ -17,7 +17,7 @@ import models
 import params
 import plot_utils
 
-#  Load Keras
+#  Load Torch
 import os
 import torch
 import torch.nn as nn

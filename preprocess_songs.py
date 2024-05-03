@@ -5,12 +5,13 @@
 Load songs from midi, preprocess and save them in numpy format.
 """
 
-import midi_utils
 import os
-import music_utils
-import numpy as np
 import argparse
+import numpy as np
+import midi_utils
+import music_utils
 import params
+
 
 def preprocess_songs(data_folders):
     """

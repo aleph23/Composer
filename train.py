@@ -5,23 +5,23 @@
 Train an autoencoder model to learn to encode songs.
 """
 
+import argparse
 import random
 
 import numpy as np
 from matplotlib import pyplot as plt
 
 import midi_utils
-import plot_utils
 import models
 import params
 
-import argparse
+import plot_utils
 
-#  Load Keras
-print("Loading keras...")
+#  Load Torch
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
 
@@ -38,7 +38,7 @@ import torch.utils.data
 
 EPOCHS_QTY = 3000
 EPOCHS_TO_SAVE = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 350, 400, 450, 800, 1000, 1500, 2000, 2500, 3000]
-LEARNING_RATE = 0.001  # learning rate
+LEARNING_RATE = 0.001 / 5 # learning rate
 CONTINUE_TRAIN = False
 GENERATE_ONLY = False
 
@@ -47,9 +47,9 @@ NUM_RAND_SONGS = 10
 
 # network params
 DROPOUT_RATE = 0.1
-BATCHNORM_MOMENTUM = 0.9  # weighted normalization with the past
+BATCHNORM_MOMENTUM: float = 0.9  # weighted normalization with the past
 USE_EMBEDDING = False
-USE_VAE = False
+USE_VAE = True
 VAE_B1 = 0.02
 VAE_B2 = 0.1
 
@@ -58,7 +58,7 @@ MAX_WINDOWS = 16  # the maximal number of measures a song can have
 LATENT_SPACE_SIZE = params.num_params
 NUM_OFFSETS = 16 if USE_EMBEDDING else 1
 
-K.set_image_data_format('channels_first')
+# PyTorch uses 'channels_first' by default for convolutional operations, so this line is not needed.
 
 # Fix the random seed so that training comparisons are easier to make
 np.random.seed(42)
@@ -128,7 +128,7 @@ def generate_random_songs(decoder, write_dir, random_vectors):
     for i in range(random_vectors.shape[0]):
         random_latent_x = random_vectors[i:i + 1]
         y_song = decoder([random_latent_x, 0])[0]
-        midi_utils.samples_to_midi(y_song[0], write_dir + 'random_vectors' + str(i) + '.mid', 32)
+        midi_utils.samples_to_midi(y_song[0], f'{write_dir}random_vectors{str(i)}.mid', 32)
 
 
 def calculate_and_store_pca_statistics(encoder, x_orig, y_orig, write_dir):
@@ -155,10 +155,10 @@ def calculate_and_store_pca_statistics(encoder, x_orig, y_orig, write_dir):
     print("Latent Mean values: ", latent_mean[:6])
     print("Latent PCA values: ", latent_pca_values[:6])
 
-    np.save(write_dir + 'latent_means.npy', latent_mean)
-    np.save(write_dir + 'latent_stds.npy', latent_stds)
-    np.save(write_dir + 'latent_pca_values.npy', latent_pca_values)
-    np.save(write_dir + 'latent_pca_vectors.npy', latent_pca_vectors)
+    np.save(f'{write_dir}latent_means.npy', latent_mean)
+    np.save(f'{write_dir}latent_stds.npy', latent_stds)
+    np.save(f'{write_dir}latent_pca_values.npy', latent_pca_values)
+    np.save(f'{write_dir}latent_pca_vectors.npy', latent_pca_vectors)
     return latent_mean, latent_stds, latent_pca_values, latent_pca_vectors
 
 
@@ -178,28 +178,26 @@ def generate_normalized_random_songs(x_orig, y_orig, encoder, decoder, random_ve
     latent_vectors = latent_mean + np.dot(random_vectors * pca_values, pca_vectors)
     generate_random_songs(decoder, write_dir, latent_vectors)
 
-    title = ''
-    if '/' in write_dir:
-        title = 'Epoch: ' + write_dir.split('/')[-2][1:]
+    title = 'Epoch: ' + write_dir.split('/')[-2][1:] if '/' in write_dir else ''
 
     plt.clf()
     pca_values[::-1].sort()
     plt.title(title)
     plt.bar(np.arange(pca_values.shape[0]), pca_values, align='center')
     plt.draw()
-    plt.savefig(write_dir + 'latent_pca_values.png')
+    plt.savefig(f'{write_dir}latent_pca_values.png')
 
     plt.clf()
     plt.title(title)
     plt.bar(np.arange(pca_values.shape[0]), latent_mean, align='center')
     plt.draw()
-    plt.savefig(write_dir + 'latent_means.png')
+    plt.savefig(f'{write_dir}latent_means.png')
 
     plt.clf()
     plt.title(title)
     plt.bar(np.arange(pca_values.shape[0]), latent_stds, align='center')
     plt.draw()
-    plt.savefig(write_dir + 'latent_stds.png')
+    plt.savefig(f'{write_dir}latent_stds.png')
 
 
 def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/lengths.npy', epochs_qty=EPOCHS_QTY, learning_rate=LEARNING_RATE):
@@ -239,7 +237,7 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
 
     samples_qty = y_samples.shape[0]
     songs_qty = y_lengths.shape[0]
-    print("Loaded " + str(samples_qty) + " samples from " + str(songs_qty) + " songs.")
+    print(f"Loaded {str(samples_qty)} samples from {str(songs_qty)} songs.")
     print(np.sum(y_lengths))
     assert (np.sum(y_lengths) == samples_qty)
 
@@ -248,7 +246,7 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
     x_orig = np.expand_dims(np.arange(x_shape[0]), axis=-1)
 
     y_shape = (songs_qty * NUM_OFFSETS, MAX_WINDOWS) + y_samples.shape[1:]  # (songs_qty, max number of windows, window pitch qty, window beats per measure)
-    y_orig = np.zeros(y_shape, dtype=y_samples.dtype)  # prepare dataset array
+    y_orig = np.zeros(y_shape, dtype=np.float32)  # prepare dataset array
 
     # fill in measure of songs into input windows for network
     song_start_ix = 0
@@ -274,7 +272,7 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
     #  create model
     if CONTINUE_TRAIN or GENERATE_ONLY:
         print("Loading model...")
-        model = load_model('results/history/model.h5')
+        model = torch.load('results/history/model.pth')
     else:
         print("Building model...")
 
@@ -290,9 +288,11 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
                                                 embedding_shape=x_train.shape[0])
 
         if USE_VAE:
-            model.compile(optimizer=Adam(lr=learning_rate), loss=vae_loss)
+            optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+            loss_function = vae_loss
         else:
-            model.compile(optimizer=RMSprop(lr=learning_rate), loss='binary_crossentropy')
+            optimizer = optim.RMSprop(model.parameters(), lr=learning_rate)
+            loss_function = nn.BCELoss()
 
         # plot model with graphvis if installed
         #try:
@@ -313,8 +313,10 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
         generate_normalized_random_songs(x_orig, y_orig, encoder, decoder, random_vectors, 'results/')
         for save_epoch in range(20):
             x_test_song = x_train[save_epoch:save_epoch + 1]
-            y_song = model.predict(x_test_song, batch_size=BATCH_SIZE)[0]
-            midi_utils.samples_to_midi(y_song, 'results/gt' + str(save_epoch) + '.mid')
+            model.eval()
+            with torch.no_grad():
+                y_song = model(x_test_song).cpu().numpy()[0]
+            midi_utils.samples_to_midi(y_song, f'results/gt{str(save_epoch)}.mid')
         exit(0)
 
     save_training_config(songs_qty, model, learning_rate)
@@ -325,7 +327,13 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
     for epoch in range(epochs_qty):
         print("Training epoch: ", epoch, "of", epochs_qty)
         if USE_EMBEDDING:
-            history = model.fit(x_train, y_train, batch_size=BATCH_SIZE, epochs=1)
+            model.train()
+            for batch_idx, (data, target) in enumerate(train_loader):
+                optimizer.zero_grad()
+                output = model(data)
+                loss = loss_function(output, target)
+                loss.backward()
+                optimizer.step()
         else:
             # produce songs from its samples with a different starting point of the song each time
             song_start_ix = 0
@@ -338,12 +346,18 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
             assert (song_end_ix == samples_qty)
             offset += 1
 
-            history = model.fit(y_train, y_train, batch_size=BATCH_SIZE, epochs=1)  # train model on reconstruction loss
+            model.train()
+            for batch_idx, (data, target) in enumerate(train_loader):
+                optimizer.zero_grad()
+                output = model(data)
+                loss = loss_function(output, target)
+                loss.backward()
+                optimizer.step()
 
         # store last loss
         loss = history.history["loss"][-1]
         train_loss.append(loss)
-        print("Train loss: " + str(train_loss[-1]))
+        print(f"Train loss: {str(train_loss[-1])}")
 
         if WRITE_HISTORY:
             plot_losses(train_loss, 'results/history/losses.png', True)
@@ -356,23 +370,27 @@ def train(samples_path='data/interim/samples.npy', lengths_path='data/interim/le
             write_dir = ''
             if WRITE_HISTORY:
                 # Create folder to save models into
-                write_dir += 'results/history/e' + str(save_epoch)
+                write_dir += f'results/history/e{str(save_epoch)}'
                 if not os.path.exists(write_dir):
                     os.makedirs(write_dir)
                 write_dir += '/'
-                model.save('results/history/model.h5')
+                torch.save(model.state_dict(), 'results/history/model.pth')
             else:
                 model.save('results/model.h5')
 
             print("...Saved.")
 
             if USE_EMBEDDING:
-                y_song = model.predict(x_test_song, batch_size=BATCH_SIZE)[0]
+                model.eval()
+                with torch.no_grad():
+                    y_song = model(x_test_song).cpu().numpy()[0]
             else:
-                y_song = model.predict(y_test_song, batch_size=BATCH_SIZE)[0]
+                model.eval()
+                with torch.no_grad():
+                    y_song = model(y_test_song).cpu().numpy()[0]
 
-            plot_utils.plot_samples(write_dir + 'test', y_song)
-            midi_utils.samples_to_midi(y_song, write_dir + 'test.mid')
+            plot_utils.plot_samples(f'{write_dir}test', y_song)
+            midi_utils.samples_to_midi(y_song, f'{write_dir}test.mid')
 
             generate_normalized_random_songs(x_orig, y_orig, encoder, decoder, random_vectors, write_dir)
 
